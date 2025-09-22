@@ -6,6 +6,8 @@ let tentativas = 1;
 let timerId = null;
 let tempoMs = 0;
 let vozAtiva = true;
+let sonsAtivos = true;
+let speedrunAtivo = false;
 let dificuldadeAtual = 'facil'; // facil|medio|dificil
 let dicaMin = 1;
 let dicaMax = numeroLimite;
@@ -41,24 +43,39 @@ function formatarTempo(ms) {
 function atualizarStatus() {
     document.getElementById('status-tentativas')?.replaceChildren(document.createTextNode(String(tentativas)));
     document.getElementById('status-tempo')?.replaceChildren(document.createTextNode(formatarTempo(tempoMs)));
+    const modo = speedrunAtivo ? 'Speedrun' : 'Clássico';
+    document.getElementById('status-modo')?.replaceChildren(document.createTextNode(modo));
 }
 
 function carregarRecorde() {
-    const key = `ns:recorde:${dificuldadeAtual}`;
+    const key = `ns:recorde:${dificuldadeAtual}:${speedrunAtivo ? 'sr' : 'cl'}`;
     const recorde = JSON.parse(localStorage.getItem(key) || 'null');
     const alvo = document.getElementById('status-recorde');
-    if (alvo) alvo.textContent = recorde ? `${recorde.tentativas} tent. / ${formatarTempo(recorde.tempoMs)}` : '—';
+    if (alvo) {
+        if (!recorde) {
+            alvo.textContent = '—';
+        } else if (speedrunAtivo) {
+            alvo.textContent = `${formatarTempo(recorde.tempoMs)}`;
+        } else {
+            alvo.textContent = `${recorde.tentativas} tent. / ${formatarTempo(recorde.tempoMs)}`;
+        }
+    }
 }
 
 function salvarRecordeSeMelhor() {
-    const key = `ns:recorde:${dificuldadeAtual}`;
+    const key = `ns:recorde:${dificuldadeAtual}:${speedrunAtivo ? 'sr' : 'cl'}`;
     const atual = { tentativas, tempoMs };
     const anterior = JSON.parse(localStorage.getItem(key) || 'null');
-    const melhor = (!anterior)
-        ? atual
-        : (atual.tentativas < anterior.tentativas || (atual.tentativas === anterior.tentativas && atual.tempoMs < anterior.tempoMs))
-            ? atual
-            : anterior;
+    let melhor;
+    if (!anterior) {
+        melhor = atual;
+    } else if (speedrunAtivo) {
+        // No speedrun, prioriza menor tempo
+        melhor = (atual.tempoMs < anterior.tempoMs) ? atual : anterior;
+    } else {
+        // Clássico: menor tentativas, depois menor tempo
+        melhor = (atual.tentativas < anterior.tentativas || (atual.tentativas === anterior.tentativas && atual.tempoMs < anterior.tempoMs)) ? atual : anterior;
+    }
     localStorage.setItem(key, JSON.stringify(melhor));
     carregarRecorde();
 }
@@ -181,6 +198,22 @@ function configurarUI() {
         });
     }
 
+    // Sons
+    const chkSons = document.getElementById('toggle-sons');
+    if (chkSons) {
+        const salvo = localStorage.getItem('ns:sonsAtivos');
+        if (salvo !== null) {
+            sonsAtivos = salvo === 'true';
+            chkSons.checked = sonsAtivos;
+        } else {
+            sonsAtivos = chkSons.checked;
+        }
+        chkSons.addEventListener('change', () => {
+            sonsAtivos = chkSons.checked;
+            localStorage.setItem('ns:sonsAtivos', String(sonsAtivos));
+        });
+    }
+
     // Tema
     const temaSalvo = lerTemaPersistido();
     aplicarTema(temaSalvo);
@@ -198,6 +231,23 @@ function configurarUI() {
             reiniciarJogo();
         }
     });
+
+    // Speedrun
+    const chkSpeedrun = document.getElementById('toggle-speedrun');
+    if (chkSpeedrun) {
+        const salvo = localStorage.getItem('ns:speedrunAtivo');
+        if (salvo !== null) {
+            speedrunAtivo = salvo === 'true';
+            chkSpeedrun.checked = speedrunAtivo;
+        } else {
+            speedrunAtivo = chkSpeedrun.checked;
+        }
+        chkSpeedrun.addEventListener('change', () => {
+            speedrunAtivo = chkSpeedrun.checked;
+            localStorage.setItem('ns:speedrunAtivo', String(speedrunAtivo));
+            novoJogo(); // reinicia para aplicar modo
+        });
+    }
 }
 
 function exibirMensagemInicial() {
@@ -229,6 +279,9 @@ function novoJogo() {
     dicaMax = numeroLimite;
     document.getElementById('lista-historico')?.replaceChildren();
     exibirMensagemInicial();
+    if (speedrunAtivo) {
+        iniciarTimer(); // no speedrun, cronômetro inicia imediatamente
+    }
 }
 
 function verificarChute() {
@@ -240,12 +293,14 @@ function verificarChute() {
         exibirTextoNaTela('p', 'Por favor, digite um número válido.');
         input?.classList.add('shake');
         setTimeout(() => input?.classList.remove('shake'), 320);
+        invalidTone();
         return;
     }
     if (chute < 1 || chute > numeroLimite) {
         exibirTextoNaTela('p', `O número deve estar entre 1 e ${numeroLimite}.`);
         input?.classList.add('shake');
         setTimeout(() => input?.classList.remove('shake'), 320);
+        invalidTone();
         return;
     }
 
@@ -254,12 +309,15 @@ function verificarChute() {
     if (chute === numeroSecreto) {
         exibirTextoNaTela('h1', 'Acertou!');
         const palavraTentativa = tentativas > 1 ? 'tentativas' : 'tentativa';
-        const mensagemTentativas = `Você descobriu o número secreto com ${tentativas} ${palavraTentativa} em ${formatarTempo(tempoMs)}!`;
+        const mensagemTentativas = speedrunAtivo
+            ? `Speedrun! Você acertou em ${formatarTempo(tempoMs)}!`
+            : `Você descobriu o número secreto com ${tentativas} ${palavraTentativa} em ${formatarTempo(tempoMs)}!`;
         exibirTextoNaTela('p', mensagemTentativas);
         document.getElementById('reiniciar')?.removeAttribute('disabled');
         pararTimer();
         salvarRecordeSeMelhor();
         confete();
+        successJingle();
         atualizarProgresso(chute);
         return;
     }
@@ -281,6 +339,7 @@ function verificarChute() {
     const dist = Math.abs(chute - numeroSecreto);
     const hotCold = dist <= Math.max(1, Math.floor(numeroLimite * 0.05)) ? '🔥 Quente' : dist <= Math.floor(numeroLimite * 0.15) ? '🟠 Morno' : '🧊 Frio';
     adicionarAoHistorico(chute, `${dica} | ${hotCold}`);
+    errorTone(dist);
 
     tentativas++;
     atualizarStatus();
@@ -312,6 +371,48 @@ function limparCampo() {
 
 function reiniciarJogo() {
     novoJogo();
+}
+
+// Sons (WebAudio)
+let audioCtx = null;
+function ensureAudio() {
+    if (!sonsAtivos) return null;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    if (!audioCtx) audioCtx = new AC();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+
+function playTone(freq = 440, duration = 0.15, type = 'sine', gain = 0.03) {
+    const ctx = ensureAudio();
+    if (!ctx) return;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    g.gain.value = gain;
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+}
+
+function successJingle() {
+    playTone(523.25, 0.1, 'sine', 0.04); // C5
+    setTimeout(() => playTone(659.25, 0.1, 'sine', 0.04), 110); // E5
+    setTimeout(() => playTone(783.99, 0.18, 'sine', 0.05), 220); // G5
+}
+
+function errorTone(distance = 0) {
+    const base = 280;
+    const freq = Math.max(160, base - Math.min(distance * 8, 200));
+    playTone(freq, 0.12, 'square', 0.03);
+}
+
+function invalidTone() {
+    playTone(160, 0.1, 'sawtooth', 0.03);
+    setTimeout(() => playTone(120, 0.12, 'sawtooth', 0.03), 120);
 }
 
 // Inicialização

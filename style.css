@@ -126,6 +126,7 @@ button:disabled {
     align-items: center;
     gap: .5rem;
 }
+.toggle input { accent-color: #1875E8; }
 
 .status {
     display: flex;
