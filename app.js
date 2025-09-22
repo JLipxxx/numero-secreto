@@ -17,6 +17,7 @@ const DIFICULDADES = {
     facil: 10,
     medio: 50,
     dificil: 100,
+    insano: 1000,
 };
 
 // Utilitários
@@ -170,10 +171,21 @@ function configurarUI() {
     // Dificuldade
     const seletor = document.getElementById('seletor-dificuldade');
     if (seletor) {
-        dificuldadeAtual = (seletor.value || 'facil');
+        // ler dificuldade persistida (se houver)
+        const difSalva = localStorage.getItem('ns:dificuldade');
+        if (difSalva && DIFICULDADES[difSalva]) {
+            dificuldadeAtual = difSalva;
+            seletor.value = difSalva;
+        } else {
+            dificuldadeAtual = (seletor.value || 'facil');
+        }
         numeroLimite = DIFICULDADES[dificuldadeAtual] || 10;
+
+        // handler de mudança
         seletor.addEventListener('change', () => {
-            dificuldadeAtual = seletor.value;
+            const nova = seletor.value;
+            dificuldadeAtual = DIFICULDADES[nova] ? nova : 'facil';
+            localStorage.setItem('ns:dificuldade', dificuldadeAtual);
             numeroLimite = DIFICULDADES[dificuldadeAtual] || 10;
             dicaMin = 1;
             dicaMax = numeroLimite;
