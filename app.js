@@ -1,34 +1,54 @@
 let listaDeNumerosSorteados = [];
-let numeroLimite = 100;
+let numeroLimite = 10; // limite padrão alinhado com o input do HTML
 let numeroSecreto = gerarNumeroAleatorio();
 let tentativas = 1;
 
 function exibirTextoNaTela(tag, texto) {
-    let campo = document.querySelector(tag);
-    campo.innerHTML = texto;
-    responsiveVoice.speak(texto, 'Brazilian Portuguese Female', {rate:1.2});
+    const campo = document.querySelector(tag);
+    if (campo) {
+        campo.innerHTML = texto;
+    }
+    // Fala somente se a biblioteca estiver disponível
+    if (typeof window !== 'undefined' && window.responsiveVoice && typeof window.responsiveVoice.speak === 'function') {
+        window.responsiveVoice.speak(texto, 'Brazilian Portuguese Female', { rate: 1.2 });
+    }
 }
 
 function exibirMensagemInicial() {
     exibirTextoNaTela('h1', 'Jogo do número secreto');
-    exibirTextoNaTela('p', 'Escolha um número entre 1 e 100');
+    exibirTextoNaTela('p', `Escolha um número entre 1 e ${numeroLimite}`);
+
+    // Sincroniza atributos do input com o limite atual
+    const input = document.querySelector('input');
+    if (input) {
+        input.setAttribute('min', '1');
+        input.setAttribute('max', String(numeroLimite));
+        input.setAttribute('placeholder', `1 a ${numeroLimite}`);
+    }
 }
 
 exibirMensagemInicial();
 
 function verificarChute() {
-    /**
-     * Stores the value entered by the user in the input field.
-     * @type {string}
-     */
-    let chute = document.querySelector('input').value;
-    
-    if (chute == numeroSecreto) {
+    const input = document.querySelector('input');
+    const valor = input ? input.value.trim() : '';
+    const chute = Number(valor);
+
+    if (!valor || Number.isNaN(chute)) {
+        exibirTextoNaTela('p', 'Por favor, digite um número válido.');
+        return;
+    }
+    if (chute < 1 || chute > numeroLimite) {
+        exibirTextoNaTela('p', `O número deve estar entre 1 e ${numeroLimite}.`);
+        return;
+    }
+
+    if (chute === numeroSecreto) {
         exibirTextoNaTela('h1', 'Acertou!');
-        let palavraTentativa = tentativas > 1 ? 'tentativas' : 'tentativa';
-        let mensagemTentativas = `Você descobriu o número secreto com ${tentativas} ${palavraTentativa}!`;
+        const palavraTentativa = tentativas > 1 ? 'tentativas' : 'tentativa';
+        const mensagemTentativas = `Você descobriu o número secreto com ${tentativas} ${palavraTentativa}!`;
         exibirTextoNaTela('p', mensagemTentativas);
-        document.getElementById('reiniciar').removeAttribute('disabled');
+        document.getElementById('reiniciar')?.removeAttribute('disabled');
     } else {
         if (chute > numeroSecreto) {
             exibirTextoNaTela('p', 'O número secreto é menor');
@@ -41,24 +61,28 @@ function verificarChute() {
 }
 
 function gerarNumeroAleatorio() {
-    let numeroEscolhido = parseInt(Math.random() * numeroLimite + 1);
-    let quantidadeDeElementosNaLista = listaDeNumerosSorteados.length;
+    const numeroEscolhido = Math.floor(Math.random() * numeroLimite) + 1;
+    const quantidadeDeElementosNaLista = listaDeNumerosSorteados.length;
 
-    if (quantidadeDeElementosNaLista == numeroLimite) {
+    if (quantidadeDeElementosNaLista === numeroLimite) {
+        // Zera a lista quando todos os números já foram sorteados
         listaDeNumerosSorteados = [];
     }
     if (listaDeNumerosSorteados.includes(numeroEscolhido)) {
         return gerarNumeroAleatorio();
     } else {
         listaDeNumerosSorteados.push(numeroEscolhido);
-        console.log(listaDeNumerosSorteados)
+        // console.log(listaDeNumerosSorteados);
         return numeroEscolhido;
     }
 }
 
 function limparCampo() {
-    chute = document.querySelector('input');
-    chute.value = '';
+    const input = document.querySelector('input');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
 }
 
 function reiniciarJogo() {
@@ -66,7 +90,7 @@ function reiniciarJogo() {
     limparCampo();
     tentativas = 1;
     exibirMensagemInicial();
-    document.getElementById('reiniciar').setAttribute('disabled', true)
+    document.getElementById('reiniciar')?.setAttribute('disabled', 'true');
 }
 
 
