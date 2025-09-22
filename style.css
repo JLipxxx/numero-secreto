@@ -110,6 +110,96 @@ button:disabled {
     background-color: gray;
 }
 
+/* Novos elementos */
+.settings {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+.settings select, .settings input[type="checkbox"] + span {
+    color: #fff;
+}
+.toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.status {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
+.dica {
+    margin-top: 1rem;
+}
+
+.progress {
+    width: 100%;
+    height: 12px;
+    background: rgba(255,255,255,.2);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: .75rem;
+}
+.progress__fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #ff9800, #4caf50);
+    transition: width .3s ease;
+}
+
+.historico {
+    margin-top: 1rem;
+    max-height: 140px;
+    overflow: auto;
+}
+.historico ul {
+    list-style: none;
+}
+.historico li {
+    font-size: 14px;
+    opacity: .9;
+}
+
+/* Tema claro opcional */
+body.tema-claro {
+    background: linear-gradient(#f2f6ff 0%, #dfe9ff 33.33%, #dfe9ff 66.67%, #c9d8ff 100%);
+}
+body.tema-claro * { color: #0b234a; }
+body.tema-claro .container { border-color: #0b5ed7; }
+body.tema-claro .container__input { color: #0b5ed7; }
+body.tema-claro .progress { background: rgba(0,0,0,.1); }
+body.tema-claro .progress__fill { background: linear-gradient(90deg, #ff9800, #2e7d32); }
+
+/* Confete */
+#confetti-container {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+}
+
+/* Feedback ao errar/acertar */
+.shake { animation: shake .3s linear 1; }
+@keyframes shake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(6px); }
+  75% { transform: translateX(-6px); }
+  100% { transform: translateX(0); }
+}
+
+.pulse { animation: pulse .4s ease 1; }
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
 @media screen and (max-width: 1250px) {
 
     h1 {
